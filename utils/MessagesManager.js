@@ -1,5 +1,6 @@
 import SocketIOClient from 'socket.io-client';
 import EventEmitter from 'events';
+import * as ccc from 'react-native-config';
 
 export default class MessagesManager {
 
@@ -21,8 +22,9 @@ export default class MessagesManager {
     }
 
     connect() {
+        console.log(process.env.SERVER_URL);
         console.log('connect');
-        this.socket = SocketIOClient('http://192.168.0.27:3000');
+        this.socket = SocketIOClient(process.env.SERVER_URL);
         this.socket.on('connect', () => {
             console.log('connected');
             this.connected = true;
