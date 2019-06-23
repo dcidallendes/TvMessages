@@ -1,8 +1,9 @@
 import React from 'react';
 import { Spinner, Text, Container, Content, Button } from "native-base";
 import MessagesManager from '../utils/MessagesManager';
+import DataManager from '../utils/DataManager';
 
-export default class LoadingScreen extends React.Component {
+export default class VerifyConnectionScreen extends React.Component {
 
     constructor(props) {
         super(props);
@@ -13,13 +14,18 @@ export default class LoadingScreen extends React.Component {
     }
 
     componentDidMount() {
-        MessagesManager.getInstance().connect();
-        MessagesManager.getInstance().eventEmitter.on('connected', () => {this._onConnected()});
-        MessagesManager.getInstance().eventEmitter.on('disconnected', () => {this._onDisconnected()});
+        DataManager.getToken().then((token) => {
+            if (token) {
+                MessagesManager.connect({token});
+                MessagesManager.eventEmitter.on('connected', () => {this._onConnected()});
+                MessagesManager.eventEmitter.on('disconnected', () => {this._onDisconnected()});
+            } else {
+                this.setState({error: true});
+            }
+        });
     }
 
     render() {
-        const { navigate } = this.props.navigation;
         if (this.state.socketConnected && !this.state.error) {
             return this._loadingView();
         } else if (!this.state.socketConnected && !this.state.error) {

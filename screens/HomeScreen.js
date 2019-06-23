@@ -9,7 +9,7 @@ import {
   Title,
   Content,
   Button,
-  Item,
+  Icon,
   Label,
   Input,
   Body,
@@ -25,6 +25,9 @@ import { Font, AppLoading, WebBrowser } from "expo";
 import { Col, Row, Grid } from "react-native-easy-grid";
 
 import MessagesManager from '../utils/MessagesManager';
+import Message from '../data/Message';
+import * as _ from 'lodash';
+import DataManager from '../utils/DataManager';
 
 export default class HomeScreen extends React.Component {
   static navigationOptions = {
@@ -40,15 +43,18 @@ export default class HomeScreen extends React.Component {
       loading: true,
       text: ''
     }
+    MessagesManager.eventEmitter.on('messageSent', (message) => {this._onMessageSent(message)});
   }
 
   componentDidMount() {
-  }
-  async componentWillMount() {
-    await Font.loadAsync({
-      Roboto: require("native-base/Fonts/Roboto.ttf"),
-      Roboto_medium: require("native-base/Fonts/Roboto_medium.ttf")
+    DataManager.getToken().then((token) => {
+      if(token) {
+        console.log('token', token);
+      }
     });
+  }
+  
+  componentWillMount() {
     this.setState({ text: '', listData: [...this.listData], loading: false });
   }
 
@@ -73,15 +79,16 @@ export default class HomeScreen extends React.Component {
           <Row size={3}>
           <List
             dataArray={this.state.listData}
-            renderRow={data =>
+            renderRow={m =>
               <ListItem>
                 <Left>
                   <Text>
-                    {data.message}
+                    {m.text}
                   </Text>
                 </Left>
                 <Right>
-                  <Text>{data.time}</Text>
+                  {m.sent === true ? <Icon type='FontAwesome' name='check'></Icon> : null}
+                  <Text>{m.toString()}</Text>
                 </Right>
               </ListItem>}
           />
@@ -113,16 +120,18 @@ export default class HomeScreen extends React.Component {
 
   _processOutcomingMessage() {
     if (this.state && this.state.text) {
-      const message = this.state.text;
-      this.listData.push({ message, time: new Date().toLocaleTimeString() });
+      const message = new Message();
+      message.text = this.state.text;
+      const data = this.state.listData;
+      data.push(message);
+      this.setState({listData: data, text: ''});
+      //this.forceUpdate();
       this._pushMessage(message);
-      this.setState({ listData: [...this.listData], text: '' });
-      
     }
   }
 
   _pushMessage(message) {
-    MessagesManager.getInstance().sendMessage(message);
+    MessagesManager.sendMessage(message);
   }
 
   _onAddMessageInput = (event) => {
@@ -130,6 +139,29 @@ export default class HomeScreen extends React.Component {
   }
   _onAddMessageButtonClick = () => {
     this._processOutcomingMessage();
+  };
+
+  _onMessageSent = (message) => {
+    console.log('onMessageSent');
+    var messageIndex = _.findIndex(this.state.listData, {id: message.id});
+    if (messageIndex >= 0) {
+      this._updateMessageItem(messageIndex);
+      this.setState(this.state);
+      /*var data = this.state.listData;
+      data[messageIndex].sent = true;
+      this.setState({listData: data}, () => {
+        console.log('message', this.state.listData);
+        
+
+      });*/
+    }
+  };
+
+  _updateMessageItem = (index) =>{
+    const data = this.state.listData;
+    data[index].sent = true;
+    this.setState({listData: data});
+    console.log('_updateMessageItem', this.state.listData);
   };
 
   _handleLearnMorePress = () => {
