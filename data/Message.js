@@ -1,10 +1,9 @@
-import uuidv4 from 'uuid/v4';
 
 export default class Message {
     /**
      * uuid key for the message
      */
-    id = uuidv4();
+    id;
     text;
     date = new Date().toLocaleTimeString();
     received = false;

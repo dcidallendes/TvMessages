@@ -22,10 +22,12 @@ import {
   Root
 } from "native-base";
 import { Font, AppLoading, WebBrowser } from "expo";
-import { Col, Row, Grid } from "react-native-easy-grid";
 
+import { GiftedChat, Send } from 'react-native-gifted-chat'
+import KeyboardSpacer from 'react-native-keyboard-spacer';
 import MessagesManager from '../utils/MessagesManager';
 import Message from '../data/Message';
+
 import * as _ from 'lodash';
 import DataManager from '../utils/DataManager';
 
@@ -36,25 +38,25 @@ export default class HomeScreen extends React.Component {
 
   input;
   listData = [];
+  token = null;
 
   constructor(props) {
     super(props);
     this.state = {
       loading: true,
+      messages: [],
       text: ''
     }
-    MessagesManager.eventEmitter.on('messageSent', (message) => {this._onMessageSent(message)});
+    MessagesManager.eventEmitter.on('messageSent', (message) => { this._onMessageSent(message) });
   }
 
-  componentDidMount() {
+  componentWillMount() {
     DataManager.getToken().then((token) => {
-      if(token) {
+      if (token) {
         console.log('token', token);
+        this.token = token;
       }
     });
-  }
-  
-  componentWillMount() {
     this.setState({ text: '', listData: [...this.listData], loading: false });
   }
 
@@ -74,103 +76,62 @@ export default class HomeScreen extends React.Component {
           </Body>
           <Right />
         </Header>
-
-        <Grid>
-          <Row size={3}>
-          <List
-            dataArray={this.state.listData}
-            renderRow={m =>
-              <ListItem>
-                <Left>
-                  <Text>
-                    {m.text}
-                  </Text>
-                </Left>
-                <Right>
-                  {m.sent === true ? <Icon type='FontAwesome' name='check'></Icon> : null}
-                  <Text>{m.toString()}</Text>
-                </Right>
-              </ListItem>}
-          />
-          </Row>
-          <Row size={2}>
-            <Content padder>
-              <Card>
-                <CardItem>
-                  <Body>
-                      <Input block value={this.state.text} onChangeText={(text) => this.setState({ text })}
-                        style={{height: 40, borderColor: 'gray', borderWidth: 1}}
-                        onSubmitEditing={this._onAddMessageInput}
-                        returnKeyType='send'
-                        autoFocus={true}
-                        blurOnSubmit={false}
-                      />
-                    <Button onPress={this._onAddMessageButtonClick} block style={{ margin: 15 }}>
-                      <Text>Enviar</Text>
-                    </Button>
-                  </Body>
-                </CardItem>
-              </Card>
-            </Content>
-          </Row>
-        </Grid>
+        <GiftedChat
+          placeholder='Ingrese un mensaje...'
+          messages={this.state.messages}
+          onSend={messages => this.onSend(messages)}
+          renderSend={this._renderSend}
+          user={{
+            _id: 1,
+          }}
+        />
+        <KeyboardSpacer />
       </Container>
     );
   }
 
-  _processOutcomingMessage() {
-    if (this.state && this.state.text) {
-      const message = new Message();
-      message.text = this.state.text;
-      const data = this.state.listData;
-      data.push(message);
-      this.setState({listData: data, text: ''});
-      //this.forceUpdate();
-      this._pushMessage(message);
-    }
+  _renderSend(props) {
+    return (
+      <Send
+        {...props}
+      >
+        <View style={{ marginRight: 10, marginBottom: 15 }}>
+            <Text>Enviar</Text>
+        </View>
+      </Send>
+    );
+  }
+
+  onSend(messages = []) {
+    this.setState(previousState => ({
+      messages: GiftedChat.append(previousState.messages, messages),
+    }))
+    messages.forEach(message => {
+      this._processOutcomingMessage(message);
+    });
+  }
+
+  _processOutcomingMessage(chatMessage) {
+    const message = new Message();
+    message.text = chatMessage.text;
+    message.id = chatMessage._id;
+    this._pushMessage(message);
   }
 
   _pushMessage(message) {
     MessagesManager.sendMessage(message);
   }
 
-  _onAddMessageInput = (event) => {
-    this._processOutcomingMessage();
-  }
-  _onAddMessageButtonClick = () => {
-    this._processOutcomingMessage();
-  };
-
   _onMessageSent = (message) => {
-    console.log('onMessageSent');
-    var messageIndex = _.findIndex(this.state.listData, {id: message.id});
-    if (messageIndex >= 0) {
-      this._updateMessageItem(messageIndex);
-      this.setState(this.state);
-      /*var data = this.state.listData;
-      data[messageIndex].sent = true;
-      this.setState({listData: data}, () => {
-        console.log('message', this.state.listData);
-        
-
-      });*/
+    console.log('onMessageSent', message);
+    const messageIndex = _.findIndex(this.state.messages, {_id: message.id});
+    if(messageIndex >= 0) {
+      const messages = this.state.messages;
+      messages[messageIndex].sent = true;
+      this.setState({messages});
     }
+
   };
 
-  _updateMessageItem = (index) =>{
-    const data = this.state.listData;
-    data[index].sent = true;
-    this.setState({listData: data});
-    console.log('_updateMessageItem', this.state.listData);
-  };
 
-  _handleLearnMorePress = () => {
-    WebBrowser.openBrowserAsync('https://docs.expo.io/versions/latest/guides/development-mode');
-  };
-
-  _handleHelpPress = () => {
-    WebBrowser.openBrowserAsync(
-      'https://docs.expo.io/versions/latest/guides/up-and-running.html#can-t-see-your-changes'
-    );
-  };
 }

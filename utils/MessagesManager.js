@@ -1,6 +1,6 @@
 import SocketIOClient from 'socket.io-client';
 import EventEmitter from 'events';
-import * as ccc from 'react-native-config';
+import Config from 'react-native-config'
 
 export default class MessagesManager {
 
